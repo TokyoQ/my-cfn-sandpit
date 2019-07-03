@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+Resources: 
+  sgvhqhttp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'vhq-http'
+      GroupDescription: 'Allows port 80 from VHQ (Syd)'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 49.255.12.162/32
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+  myLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-0dc96254d5535925f #Linux 2 AMI
+      EbsOptimized: false
+      InstanceMonitoring: false
+      InstanceType: t2.micro
+      SecurityGroups: 
+        - !Ref sgvhqhttp
+      UserData:
+        Fn::Base64: !Sub
+          #!/bin/bash -ex # your script here
+  myASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs ap-southeast-2
+      LaunchConfigurationName: !Ref myLaunchConfig
+      MaxSize: '4'
+      MinSize: '2'
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+          PropagateAtLaunch: True
