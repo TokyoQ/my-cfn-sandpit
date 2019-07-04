@@ -1,5 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: ---
+Parameters:
+  mySshKey:
+    Description: Name of an existing EC2 KeyPair to enable SSH access into the server
+    Type: AWS::EC2::KeyPair::KeyName
 Resources: 
   sgvhqhttp:
     Type: AWS::EC2::SecurityGroup
@@ -14,6 +18,23 @@ Resources:
       Tags:
         - Key: Owner
           Value: aleccollier
+  sgvhqssh:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'vhq-ssh'
+      GroupDescription: 'Allows port 22 from VHQ (Syd)'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 49.255.12.162/32
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 1.129.105.12/32
+      Tags:
+        - Key: Owner
+          Value: aleccollier
   myLaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
@@ -21,15 +42,18 @@ Resources:
       EbsOptimized: false
       InstanceMonitoring: false
       InstanceType: t2.micro
+      KeyName: !Ref mySshKey
       SecurityGroups: 
         - !Ref sgvhqhttp
+        - !Ref sgvhqssh
       UserData:
         Fn::Base64: !Sub
-          #!/bin/bash -ex # your script here
+          #!/bin/bash -ex 
+          sudo yum update -y
   myASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AvailabilityZones: !GetAZs ap-southeast-2
+      AvailabilityZones: !GetAZs ''
       LaunchConfigurationName: !Ref myLaunchConfig
       MaxSize: '4'
       MinSize: '2'
