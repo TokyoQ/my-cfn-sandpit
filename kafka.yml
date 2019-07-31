@@ -1,17 +1,64 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: ---
 Parameters:
+  KafkaClusterName:
+    Type: String
+    Default: 'AlecsMSK'
+    Description: Name of the Kafka cluster
   KafkaPort:
     Type: Number
     Default: 9092
+    Description: Kafka port - keep as default
+  KafkaInstanceType:
+    Type: String
+    Description: MSK uses custom instance types.
+    Default: kafka.m5.large
+    AllowedValues: 
+      - kafka.m5.large
+      - kafka.m5.xlarge
+      - kafka.m5.2xlarge
+      - kafka.m5.4xlarge
+      - kafka.m5.12xlarge
+      - kafka.m5.24xlarge
+  KafkaStorageSize:
+    Type: Number
+    Description: Number of GB to allocate to each broker.
+    Default: 100
+  KafkaBrokers:
+    Type: Number
+    Description: Number of brokers to run in the cluster. Must be a multiple of the number of availability zones (3).
+    Default: 3
+
 Resources:
+  alecMsk:
+    Type: AWS::MSK::Cluster
+    Properties:
+      ClusterName: 
+        !Ref KafkaClusterName
+      KafkaVersion: 2.1.0
+      NumberOfBrokerNodes: 
+        !Ref KafkaBrokers
+      BrokerNodeGroupInfo:
+        ClientSubnets:
+          - !Ref alecSubnetA
+          - !Ref alecSubnetB
+          - !Ref alecSubnetC
+        SecurityGroups:
+          - !Ref sgKafkaBrokers
+        InstanceType: 
+          !Ref KafkaInstanceType
+        StorageInfo:
+          EBSStorageInfo:
+            VolumeSize:
+              !Ref KafkaStorageSize
+
   sgKafkaClients:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: 'alec-kafka-clients'
       GroupDescription: 'Kafka clients'
       VpcId: 
-        !Ref myvpc
+        !Ref alecVpc
       Tags:
         - Key: Owner
           Value: aleccollier
@@ -21,7 +68,7 @@ Resources:
       GroupName: 'alec-kafka-brokers'
       GroupDescription: 'Kafka brokers'
       VpcId: 
-        !Ref myvpc
+        !Ref alecVpc
       Tags:
         - Key: Owner
           Value: aleccollier
@@ -38,7 +85,6 @@ Resources:
         !Ref KafkaPort
       SourceSecurityGroupId:
         !Ref sgKafkaClients
-
   sgEgressKafka:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -52,7 +98,40 @@ Resources:
       DestinationSecurityGroupId:
         !Ref sgKafkaBrokers
 
-  myvpc:
+  alecVpc:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: '10.45.0.0/23'
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+  alecSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-southeast-2a
+      VpcId: 
+        !Ref alecVpc
+      CidrBlock: 10.45.0.0/25
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+  alecSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-southeast-2b
+      VpcId: 
+        !Ref alecVpc
+      CidrBlock: 10.45.0.128/25
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+  alecSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-southeast-2c
+      VpcId: 
+        !Ref alecVpc
+      CidrBlock: 10.45.1.0/25
+      Tags:
+        - Key: Owner
+          Value: aleccollier
