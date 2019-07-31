@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+Parameters:
+  KafkaPort:
+    Type: Number
+    Default: 9092
+Resources:
+  sgKafkaClients:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'alec-kafka-clients'
+      GroupDescription: 'Kafka clients'
+      VpcId: 
+        !Ref myvpc
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+  sgKafkaBrokers:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'alec-kafka-brokers'
+      GroupDescription: 'Kafka brokers'
+      VpcId: 
+        !Ref myvpc
+      Tags:
+        - Key: Owner
+          Value: aleccollier
+  
+  sgIngressKafka:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId:
+        !Ref sgKafkaBrokers
+      FromPort: 
+        !Ref KafkaPort
+      ToPort: 
+        !Ref KafkaPort
+      SourceSecurityGroupId:
+        !Ref sgKafkaClients
+
+  sgEgressKafka:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      IpProtocol: tcp
+      GroupId:
+        !Ref sgKafkaClients
+      FromPort:
+        !Ref KafkaPort
+      ToPort: 
+        !Ref KafkaPort
+      DestinationSecurityGroupId:
+        !Ref sgKafkaBrokers
+
+  myvpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: '10.45.0.0/23'
